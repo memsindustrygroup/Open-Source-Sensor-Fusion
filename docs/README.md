@@ -6,6 +6,7 @@ code is generated via the Freescale Processor Expert Tool.  The Freescale kit co
 hardware sets available at the URL above.   To keep things simple, we did not duplicate all of that material here.  You can download
 Freescale templates and Kinetis Design Studio IDE (both of which are also free) and generate the missing files.
 
-This docs directory contains quite a bit of collateral with regard to fusion library operation.  We suggest you start with the user guide and datasheet.
+This docs directory contains quite a bit of collateral with regard to fusion library operation.  We suggest you start with the 
+[user guide](SensorFusionUserGuide.pdf) and [datasheet](SensorFusionDatasheet.pdf).
 
 Alternately, there is guidance to creating ports at https://github.com/memsindustrygroup/Open-Source-Sensor-Fusion/wiki/Portability%20Topics.
