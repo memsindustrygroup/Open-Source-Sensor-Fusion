@@ -53,8 +53,8 @@ struct MQXLiteGlobals mqxglobals;
 // Main task
 void Main_task(uint32_t task_init_data)
 {
-	// switch all three LEDs off
-	LED_RED_SetVal(NULL);
+	// switch the red LED on (line low sets LED on)
+	LED_RED_ClrVal(NULL);
 	LED_GREEN_SetVal(NULL);
 	LED_BLUE_SetVal(NULL);
 
@@ -65,14 +65,11 @@ void Main_task(uint32_t task_init_data)
 	// create the magnetic calibration event (typically once per minute)
 	_lwevent_create(&(mqxglobals.MagCalEventStruct), LWEVENT_AUTO_CLEAR);
 
-	// create the sensor read task (controlled by sensor sampling event SamplingEventStruct)
-	// on 12/12/2013 RDSENSDATA_TASK_STACK_SIZE was approx 768 bytes stack
+	// create the sensor read task (controlled by sensor sampling event SamplingEventStruct)	
 	_task_create_at(0, RDSENSDATA_TASK, 0, RdSensData_task_stack, RDSENSDATA_TASK_STACK_SIZE);
-	// create the sensor fusion task (controlled by sensor fusion event RunKFEventStruct)
-	// on 12/12/2013 FUSION_TASK_STACK_SIZE was approx 1024 bytes stack
+	// create the sensor fusion task (controlled by sensor fusion event RunKFEventStruct)	
 	_task_create_at(0, FUSION_TASK, 0, Fusion_task_stack, FUSION_TASK_STACK_SIZE);
-	// create the magnetic calibration task (controlled by MagCalEventStruct)
-	// on 12/12/2013 MAGCAL_TASK_STACK_SIZE was approx 768 bytes stack
+	// create the magnetic calibration task (controlled by MagCalEventStruct)	
 	_task_create_at(0, MAGCAL_TASK, 0, MagCal_task_stack, MAGCAL_TASK_STACK_SIZE);
 	// and this main task uses about 512 bytes stack for a grand total of 3K task stack space
 
@@ -84,15 +81,20 @@ void Main_task(uint32_t task_init_data)
 	mqxglobals.FTMReload = (uint16)(FTM_INCLK_HZ / SENSORFS);
 	mqxglobals.FTMTimestamp = 0;
 	globals.iPacketNumber = 0;
-	globals.AngularVelocityPacketOn = false;
+	globals.AngularVelocityPacketOn = true;
 	globals.DebugPacketOn = true;
-	globals.RPCPacketOn = false;
+	globals.RPCPacketOn = true;
 	globals.AltPacketOn = true;
 	globals.iMPL3115Found = false;
 	globals.MagneticPacketID = 0;
 
 	// initialize the BlueRadios Bluetooth module and other user tasks
 	UserStartup();
+	
+	// initialize the incoming command buffer to all '~' = 0x7E and trigger a callback 
+	// when any single command character is received into the UART buffer
+	iCommand[0] = iCommand[1] = iCommand[2] = iCommand[3] = '~';
+	UART_ReceiveBlock(UART_DeviceData, sUARTInputBuf, 1);
 
 	// destroy this task (main task) now that the three new tasks are created
 	_task_destroy(MQX_NULL_TASK_ID);
@@ -147,6 +149,9 @@ void Fusion_task(uint32_t task_init_data)
 	// infinite loop controlled by MQX-Lite events
 	while(1)
 	{
+		// ensure the red LED (power up check) is off (line high)
+		LED_RED_SetVal(NULL);
+		
 		// set the output test pin to zero (for timing measurements)
 		TestPin_KF_Time_ClrVal(NULL);
 

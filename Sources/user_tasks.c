@@ -84,17 +84,40 @@ void UserHighFrequencyTaskRun(void)
 
 void UserMediumFrequencyTaskRun(void)
 {
-	// This code runs after the Kalman filter loop
-	// The default frequency at which this code runs is 25Hz.
-	
-	// The following UART function constructs and sends Bluetooth packets used by the
-	// Freescale Sensor Fusion Toolbox.  If the developer is not using the toolbox,
-	// it can be removed.
-	// transmit orientation over the radio link
-	CreateAndSendBluetoothPacketsViaUART(UART_DeviceData);
+	static int32 iThrottle = 0;
+
+	// this function is called after the Kalman filter loop at a rate of SENSORFS / OVERSAMPLE_RATIO Hz.
+	// with the default settings this is 200Hz/8=25Hz giving a smooth video quality display on the 
+	// PC and Android user interfaces.
+	// the UART (serial over USB and over Bluetooth) is limited to 115kbps which is more than adequate for
+	// the 31kbps needed at the default 25Hz output rate but insufficient for 100Hz or 200Hz output rates.
+	// since there is little point is providing output data faster than 25Hz video rates, this function
+	// throttles the packet rate to a maximum of MAXPACKETRATE=25Hz.
+
+	// check for any need to throttle the output rate
+#define MAXPACKETRATE 25
+#define RATERESOLUTION 1000
+	if (((int32)MAXPACKETRATE * (int32)OVERSAMPLE_RATIO) >= (int32)SENSORFS)
+	{
+		// no UART bandwidth problem: transmit the packets over UART (USB and Bluetooth)
+		CreateAndSendBluetoothPacketsViaUART(UART_DeviceData);
+	}
+	else
+	{
+		// throttle back by fractional multiplier (OVERSAMPLE_RATIO * MAXPACKETRATE) / SENSORFS
+		// the increment applied to iThrottle is in the range 0 to (RATERESOLUTION - 1)
+		iThrottle += ((int32)OVERSAMPLE_RATIO * (int32) MAXPACKETRATE * (int32)RATERESOLUTION) / SENSORFS;
+		if (iThrottle >= RATERESOLUTION)
+		{			
+			// update the throttle counter and transmit the packets over UART (USB and Bluetooth)
+			iThrottle -= RATERESOLUTION;
+			CreateAndSendBluetoothPacketsViaUART(UART_DeviceData);
+		}
+	}
 
 	//
 	// PUT YOUR CODE HERE
 	//
+	
 	return;
 }

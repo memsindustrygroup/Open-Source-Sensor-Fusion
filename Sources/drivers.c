@@ -41,6 +41,7 @@
 uint8 I2C_Buf[I2C_BUF_LEN];
 uint8 sUARTOutputBuf[UART_OUTPUT_BUFFER_SIZE];
 uint8 sUARTInputBuf[UART_INPUT_BUFFER_SIZE];
+uint8 iCommand[4];
 
 // sensor physical I2C addresses
 #define MPL3115_I2C_ADDR		0x60
@@ -573,7 +574,7 @@ void MAG3110_Init(LDD_TDeviceData *DeviceDataPtr, struct MagSensor *pthisMag)
 		I2C_CheckBus(DeviceDataPtr, &BusState);
 	} while (BusState != LDD_I2C_IDLE);
 
-	// write 0000 0001 = 0x01 to CTRL_REG1 to place MMAG3110 into standby
+	// write 0000 0001 = 0x01 to CTRL_REG1 to take MMAG3110 out of standby
 	// [7-5]: DR=000 for 80Hz ODR
 	// [4-3]: OS=00 for no oversampling
 	// [2]: FT=0 for normal reads
@@ -856,9 +857,6 @@ void BlueRadios_Init(LDD_TDeviceData *DeviceDataPtr)
 	// wait until all characters are transmitted
 	while (UART_GetSentDataNum(DeviceDataPtr) != ilen)
 		;
-
-	// clear the input UART buffer of any characters returned by the Bluetooth module
-	UART_ReceiveBlock(UART_DeviceData, sUARTInputBuf, UART_INPUT_BUFFER_SIZE);
 
 	return;
 }

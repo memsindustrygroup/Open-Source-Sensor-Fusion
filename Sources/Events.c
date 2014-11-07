@@ -39,7 +39,11 @@
 // called on NMI
 void Cpu_OnNMIINT(void)
 {
-	// return with no action
+	// Disable NMI pin (some boards do not have pullups)
+    SIM_SCGC5 |= (uint32_t)SIM_SCGC5_PORTA_MASK; /* NMI and PORTA clock gate enable */
+    PORTA_PCR4 &= PORT_PCR_MUX_MASK;
+    /* enable input with pull up enable not NMI */
+    PORTA_PCR4 |= PORT_PCR_MUX(01) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 	return;
 }
 
@@ -99,90 +103,135 @@ void UART_OnTxComplete(LDD_TUserData *UserDataPtr)
 
 void UART_OnBlockReceived(LDD_TUserData *UserDataPtr)
 {
-	int32 isum;			// 32 bit identifier
+	int32 isum;			// 32 bit command identifier
+	int16 nbytes;		// number of bytes received
+	int16 i, j;			// loop counters
 
-	// this function is called when a complete UART block has been received which is either
-	// 4 byte head command (physical sensors) or
-	// 4 byte command plus 18 sensor data bytes (simulated sensors)
+	// this function is called when one or more characters have arrived in the UART's receive buffer
+	// incoming characters are placed in a delay line and processed whenever a valid command is received.
+	// this provides resilience against loss of incoming characters.
+	// note also that although this callback is theoretically called whenever a single byte is received, 
+	// in practice there may be bursts of more than one byte in the receive buffer.
+	// all received bytes are processed before this callback is executed.
 
-	// calculate a unique 32 bit identifier from the four command characters received
-	isum = ((((((int32)sUARTInputBuf[0] << 8) + sUARTInputBuf[1]) << 8) + sUARTInputBuf[2]) << 8) + sUARTInputBuf[3];
+	// determine how many bytes are available in the UART receive buffer
+	nbytes = UART_GetReceivedDataNum(UART_DeviceData);
 
-	// execute the bluetooth command received
-	switch (isum)
+	// parse all received bytes in sUARTInputBuf into the iCommand delay line
+	for (i = 0; i < nbytes; i++)
 	{
-	// "VG+ " = enable angular velocity packet transmission
-	case ((((('V' << 8) + 'G') << 8) + '+') << 8) + ' ':
-				globals.AngularVelocityPacketOn = true; 
-	break;
-	// "VG- " = disable angular velocity packet transmission
-	case ((((('V' << 8) + 'G') << 8) + '-') << 8) + ' ':
-				globals.AngularVelocityPacketOn = false; 
-	break;
-	// "DB+ " = enable debug packet transmission
-	case ((((('D' << 8) + 'B') << 8) + '+') << 8) + ' ':
-				globals.DebugPacketOn = true;
-	break;
-	// "DB- " = disable debug packet transmission
-	case ((((('D' << 8) + 'B') << 8) + '-') << 8) + ' ':
-				globals.DebugPacketOn = false; 
-	break;
-	// "Q3  " = transmit 3-axis accelerometer quaternion in standard packet
-	case ((((('Q' << 8) + '3') << 8) + ' ') << 8) + ' ':
-				globals.QuaternionPacketType = Q3;
-	break;
-	// "Q3M " = transmit 3-axis magnetometer quaternion in standard packet
-	case ((((('Q' << 8) + '3') << 8) + 'M') << 8) + ' ':
-				globals.QuaternionPacketType = Q3M;
-	break;
-	// "Q3G " = transmit 3-axis gyro quaternion in standard packet
-	case ((((('Q' << 8) + '3') << 8) + 'G') << 8) + ' ':
-				globals.QuaternionPacketType = Q3G; 
-	break;
-	// "Q6MA" = transmit 6-axis mag/accel quaternion in standard packet
-	case ((((('Q' << 8) + '6') << 8) + 'M') << 8) + 'A':
-				globals.QuaternionPacketType = Q6MA; 
-	break;	
-	// "Q6AG" = transmit 6-axis accel/gyro quaternion in standard packet
-	case ((((('Q' << 8) + '6') << 8) + 'A') << 8) + 'G':
-				globals.QuaternionPacketType = Q6AG;
-	break;
-	// "Q9  " = transmit 9-axis quaternion in standard packet (default)
-	case ((((('Q' << 8) + '9') << 8) + ' ') << 8) + ' ':
-				globals.QuaternionPacketType = Q9;
-	break;
-	// "RPC+" = Roll/Pitch/Compass on
-	case ((((('R' << 8) + 'P') << 8) + 'C') << 8) + '+':
-				globals.RPCPacketOn = true; 
-	break;
-	// "RPC-" = Roll/Pitch/Compass off
-	case ((((('R' << 8) + 'P') << 8) + 'C') << 8) + '-':
-				globals.RPCPacketOn = false; 
-	break;
-	// "ALT+" = Altitude packet on
-	case ((((('A' << 8) + 'L') << 8) + 'T') << 8) + '+':
-				globals.AltPacketOn = true; 
-	break;
-	// "ALT-" = Altitude packet off
-	case ((((('A' << 8) + 'L') << 8) + 'T') << 8) + '-':
-				globals.AltPacketOn = false; 
-	break;
-	
-	// "RST " = Soft reset
-	case ((((('R' << 8) + 'S') << 8) + 'T') << 8) + ' ':	
-		Fusion_Init();
-		mqxglobals.FTMTimestamp = 0;
-	break;
-	
-	default:
-		// no action
-	break;
-	}
+		// shuffle the iCommand delay line and add the new command byte
+		for (j = 0; j < 3; j++)
+			iCommand[j] = iCommand[j + 1];
+		iCommand[3] = sUARTInputBuf[i];
+		
+		// check if we have a valid command yet
+		isum = ((((((int32)iCommand[0] << 8) + iCommand[1]) << 8) + iCommand[2]) << 8) + iCommand[3];
+		switch (isum)
+		{
+		// "VG+ " = enable angular velocity packet transmission
+		case ((((('V' << 8) + 'G') << 8) + '+') << 8) + ' ':
+			globals.AngularVelocityPacketOn = true;
+			iCommand[3] = '~';
+		break;
+		// "VG- " = disable angular velocity packet transmission
+		case ((((('V' << 8) + 'G') << 8) + '-') << 8) + ' ':
+			globals.AngularVelocityPacketOn = false; 
+			iCommand[3] = '~';
+		break;
+		
+		// "DB+ " = enable debug packet transmission
+		case ((((('D' << 8) + 'B') << 8) + '+') << 8) + ' ':
+			globals.DebugPacketOn = true;
+			iCommand[3] = '~';
+		break;
+		// "DB- " = disable debug packet transmission
+		case ((((('D' << 8) + 'B') << 8) + '-') << 8) + ' ':
+			globals.DebugPacketOn = false; 
+			iCommand[3] = '~';
+		break;
+		
+		// "Q3  " = transmit 3-axis accelerometer quaternion in standard packet
+		case ((((('Q' << 8) + '3') << 8) + ' ') << 8) + ' ':
+	#if defined COMPUTE_3DOF_G_BASIC
+			globals.QuaternionPacketType = Q3;
+			iCommand[3] = '~';
+	#endif
+		break;
+		// "Q3M " = transmit 3-axis magnetometer quaternion in standard packet
+		case ((((('Q' << 8) + '3') << 8) + 'M') << 8) + ' ':
+	#if defined COMPUTE_3DOF_B_BASIC
+			globals.QuaternionPacketType = Q3M;
+			iCommand[3] = '~';
+	#endif
+		break;
+		// "Q3G " = transmit 3-axis gyro quaternion in standard packet
+		case ((((('Q' << 8) + '3') << 8) + 'G') << 8) + ' ':
+	#if defined COMPUTE_3DOF_Y_BASIC
+			globals.QuaternionPacketType = Q3G; 
+			iCommand[3] = '~';
+	#endif
+		break;
+		// "Q6MA" = transmit 6-axis mag/accel quaternion in standard packet
+		case ((((('Q' << 8) + '6') << 8) + 'M') << 8) + 'A':
+	#if defined COMPUTE_6DOF_GB_BASIC
+			globals.QuaternionPacketType = Q6MA;
+			iCommand[3] = '~';
+	#endif
+		break;	
+		// "Q6AG" = transmit 6-axis accel/gyro quaternion in standard packet
+		case ((((('Q' << 8) + '6') << 8) + 'A') << 8) + 'G':
+	#if defined COMPUTE_6DOF_GY_KALMAN
+			globals.QuaternionPacketType = Q6AG;
+			iCommand[3] = '~';
+	#endif
+		break;
+		// "Q9  " = transmit 9-axis quaternion in standard packet (default)
+		case ((((('Q' << 8) + '9') << 8) + ' ') << 8) + ' ':
+	#if defined COMPUTE_9DOF_GBY_KALMAN
+			globals.QuaternionPacketType = Q9;
+			iCommand[3] = '~';
+	#endif
+		break;
+		
+		// "RPC+" = Roll/Pitch/Compass on
+		case ((((('R' << 8) + 'P') << 8) + 'C') << 8) + '+':
+			globals.RPCPacketOn = true; 
+			iCommand[3] = '~';
+		break;
+		// "RPC-" = Roll/Pitch/Compass off
+		case ((((('R' << 8) + 'P') << 8) + 'C') << 8) + '-':
+			globals.RPCPacketOn = false; 
+			iCommand[3] = '~';
+		break;
+		
+		// "ALT+" = Altitude packet on
+		case ((((('A' << 8) + 'L') << 8) + 'T') << 8) + '+':
+			globals.AltPacketOn = true; 
+			iCommand[3] = '~';
+		break;
+		// "ALT-" = Altitude packet off
+		case ((((('A' << 8) + 'L') << 8) + 'T') << 8) + '-':
+			globals.AltPacketOn = false; 
+			iCommand[3] = '~';
+		break;
 
-	// tell UART to receive bluetooth packets and generate the next callback event to this same function
-	// when the specified number of bytes have been received. this function is non-blocking
-	// receive 4 bytes specifying the quaternion to be transmitted back
-	UART_ReceiveBlock(UART_DeviceData, sUARTInputBuf, 4);
+		// "RST " = Soft reset
+		case ((((('R' << 8) + 'S') << 8) + 'T') << 8) + ' ':	
+			Fusion_Init();
+			mqxglobals.FTMTimestamp = 0;
+			iCommand[3] = '~';
+		break;
+
+		default:
+			// no action
+			break;
+		}	
+	} // end of loop over received characters
+
+	// generate the next callback event to this function when the next character arrives
+	// this function is non-blocking
+	UART_ReceiveBlock(UART_DeviceData, sUARTInputBuf, 1);
 
 	return;
 }

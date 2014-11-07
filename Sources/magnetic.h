@@ -27,25 +27,12 @@
 #define MAGNETIC_H
 
 // magnetic calibration constants
-#if THIS_BOARD_ID != BOARD_FXLC95000CL
-// Kinetis magnetic buffer parameters
 #define MAGBUFFSIZEX 12					// x dimension in magnetometer buffer (12x24 equals 288 elements)
 #define MAGBUFFSIZEY (2 * MAGBUFFSIZEX)	// y dimension in magnetometer buffer (12x24 equals 288 elements)
 #define MINMEASUREMENTS4CAL 40			// minimum number of measurements for 4 element calibration
 #define MINMEASUREMENTS7CAL 100			// minimum number of measurements for 7 element calibration
 #define MINMEASUREMENTS10CAL 150		// minimum number of measurements for 10 element calibration
 #define MAXMEASUREMENTS 240				// maximum number of measurements used for calibration
-#else
-// FXLC95000CL magnetic buffer parameters
-#define MAGBUFFSIZEX 6					// x dimension in magnetometer buffer (6x12 equals 72 elements)
-#define MAGBUFFSIZEY (2 * MAGBUFFSIZEX)	// y dimension in magnetometer buffer (6x12 equals 72 elements)
-#define MINMEASUREMENTS4CAL 40			// minimum number of measurements for 4 element calibration
-#define MINMEASUREMENTS7CAL 55			// minimum number of measurements for 7 element calibration
-#define MINMEASUREMENTS10CAL 60			// minimum number of measurements for 10 element calibration
-#define MAXMEASUREMENTS 65				// maximum number of measurements used for calibration
-#endif
-
-// parameters common to Kinetis and Galla
 #define INTERVAL4CAL 75					// 3s at 25Hz: 4 element interval (samples)
 #define INTERVAL7CAL 250				// 10s at 25Hz: 7 element interval (samples)
 #define INTERVAL10CAL 750				// 30s at 25Hz: 10 element interval (samples)

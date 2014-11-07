@@ -111,7 +111,7 @@
 #define COMPUTE_9DOF_GBY_KALMAN		// 9DOF accel, mag and gyro (Kalman): (1x accel + 1x mag + 1x gyro)
 
 // int16 build number sent in Bluetooth debug packet
-#define THISBUILD  420
+#define THISBUILD  422
 
 // sampling rate and kalman filter timing
 #define FTM_INCLK_HZ		1000000		// int32: 1MHz FTM timer frequency set in PE: do not change

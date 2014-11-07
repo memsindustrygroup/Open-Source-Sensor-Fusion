@@ -490,24 +490,6 @@ void MagCal_Run(struct MagCalibration *pthisMagCal, struct MagneticBuffer *pthis
 // function applies the hardware abstraction layer to the Fast (typically 200Hz) accelerometer readings
 void ApplyAccelHAL(struct AccelSensor *pthisAccel)
 {
-	// Windows 8 board or FXLC95000CL
-#if (THIS_BOARD_ID == BOARD_WIN8_REV05) || (THIS_BOARD_ID == BOARD_FXLC95000CL)
-#if THISCOORDSYSTEM == NED
-	int16 itmp16;
-	itmp16 = thisAccel.iGpFast[X];
-	thisAccel.iGpFast[X] = thisAccel.iGpFast[Y];
-	thisAccel.iGpFast[Y] = itmp16;
-#endif // NED
-#if THISCOORDSYSTEM == ANDROID
-	thisAccel.iGpFast[X] = -thisAccel.iGpFast[X];
-	thisAccel.iGpFast[Y] = -thisAccel.iGpFast[Y];
-#endif // Android
-#if THISCOORDSYSTEM == WIN8
-	int16 itmp16;
-	thisAccel.iGpFast[Z] = -thisAccel.iGpFast[Z];
-#endif // Win8
-#else 
-	// can assume sensor shield boards
 #if THISCOORDSYSTEM == NED
 	int16 itmp16;
 	itmp16 = thisAccel.iGpFast[X];
@@ -521,7 +503,6 @@ void ApplyAccelHAL(struct AccelSensor *pthisAccel)
 #if (THISCOORDSYSTEM == WIN8)
 	thisAccel.iGpFast[Z] = -thisAccel.iGpFast[Z];
 #endif // Win8
-#endif // boards
 
 	return;
 }
@@ -529,25 +510,6 @@ void ApplyAccelHAL(struct AccelSensor *pthisAccel)
 // function applies the hardware abstraction layer to the Fast (typically 200Hz) magnetometer readings
 void ApplyMagHAL(struct MagSensor *pthisMag)
 {
-	// non-shield boards: Windows 8 board or FXLC95000CL
-#if (THIS_BOARD_ID == BOARD_WIN8_REV05) || (THIS_BOARD_ID == BOARD_FXLC95000CL)
-#if THISCOORDSYSTEM == NED
-	int16 itmp16;
-	itmp16 = thisMag.iBpFast[X];
-	thisMag.iBpFast[X] = -thisMag.iBpFast[Y];
-	thisMag.iBpFast[Y] = -itmp16;
-	thisMag.iBpFast[Z] = -thisMag.iBpFast[Z];
-#endif // NED
-#if	THISCOORDSYSTEM == ANDROID
-	thisMag.iBpFast[X] = -thisMag.iBpFast[X];
-	thisMag.iBpFast[Y] = -thisMag.iBpFast[Y];	
-#endif // Android
-#if THISCOORDSYSTEM == WIN8
-	thisMag.iBpFast[X] = -thisMag.iBpFast[X];
-	thisMag.iBpFast[Y] = -thisMag.iBpFast[Y];
-#endif // Win8
-#else 
-	// can assume sensor shield boards
 #if THISCOORDSYSTEM == NED
 	int16 itmp16;
 	itmp16 = thisMag.iBpFast[X];
@@ -562,8 +524,7 @@ void ApplyMagHAL(struct MagSensor *pthisMag)
 #if THISCOORDSYSTEM == WIN8
 	thisMag.iBpFast[X] = -thisMag.iBpFast[X];
 	thisMag.iBpFast[Y] = -thisMag.iBpFast[Y];
-#endif // Win8
-#endif // boards
+#endif
 
 	// finally correct for the left handed magnetic coordinate system in MAG3110
 #if defined USE_MAG3110
@@ -576,27 +537,6 @@ void ApplyMagHAL(struct MagSensor *pthisMag)
 // function applies the hardware abstraction layer to the Fast (typically 200Hz) gyro readings
 void ApplyGyroHAL(struct GyroSensor *pthisGyro, int16 irow)
 {
-	// non-shield boards: Windows 8 board or FXLC95000CL
-#if (THIS_BOARD_ID == BOARD_WIN8_REV05) || (THIS_BOARD_ID == BOARD_FXLC95000CL) 
-#if THISCOORDSYSTEM == NED
-	int16 itmp16;
-	thisGyro.iYpFast[irow][X] = -thisGyro.iYpFast[irow][X];
-	thisGyro.iYpFast[irow][Z] = -thisGyro.iYpFast[irow][Z];
-#endif // NED
-#if THISCOORDSYSTEM == ANDROID
-	int16 itmp16;
-	itmp16 = thisGyro.iYpFast[irow][X];
-	thisGyro.iYpFast[irow][X] = thisGyro.iYpFast[irow][Y];
-	thisGyro.iYpFast[irow][Y] = -itmp16;
-#endif // Android
-#if THISCOORDSYSTEM == WIN8
-	int16 itmp16;
-	itmp16 = thisGyro.iYpFast[irow][X];
-	thisGyro.iYpFast[irow][X] = thisGyro.iYpFast[irow][Y];
-	thisGyro.iYpFast[irow][Y] = -itmp16;
-#endif // Win8
-#else 
-	// can assume sensor shield boards
 #if THISCOORDSYSTEM == NED
 	int16 itmp16;
 	itmp16 = thisGyro.iYpFast[irow][X];
@@ -612,7 +552,6 @@ void ApplyGyroHAL(struct GyroSensor *pthisGyro, int16 irow)
 	thisGyro.iYpFast[irow][X] = -thisGyro.iYpFast[irow][X];
 	thisGyro.iYpFast[irow][Y] = -thisGyro.iYpFast[irow][Y];
 #endif // Win8
-#endif // boards
 
 	return;
 }
