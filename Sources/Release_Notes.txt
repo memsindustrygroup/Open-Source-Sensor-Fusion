@@ -1,0 +1,23 @@
+Release Notes for Sensor Fusion Library
+This release: Freescale pre-release for build 422
+Build date: 7 November 2014
+
+================================= build 422 Changes ===============================
+Previous production release: build 420 (build 421 was never formally released)
+Changes from build 420:
+1.  Angular Rate and Roll/Pitch/Compass heading packets are now turned on by default in mqx_tasks.c.
+2.  Events.c command processing modified:
+    * so that requested, but unsupported, quaternion type 
+      requests result in the quaternion type remaining unchanged.  Some builds previously returned
+      unit quaternions for algorithm options that were not included.
+    * Command interpreter modified to process incoming bytes one at a time, results in more
+      robust communications with some CDC drivers.
+3.  drivers.c/.h have a few of modifications to support the new command interpreter, as does mqx_tasks.c.
+4.  NMI IRQ callback in Events.c modified to disable NMI in the future.  This was required because 
+    supported Freedom boards did not include an NMI pullup.  This item addresses Errata #5 below.
+5.  Stripped unused board support defines from magnetic.h
+6.  LED initialization added to mqx_tasks.c.
+7.  Redundant logic for various board options removed from tasks.c.
+8.  An additional UART method is enabled in Processor Expert for all projects.
+9.  user_tasks.c modified so that UART bandwidth will not be exceeded for very high fusion rates
+
